@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Trains for Joyce</title>
+    <style>
+		body {width:980px}
+    	* { padding: 0; margin: 0; }
+    	canvas { position:absolute; top:0px; }
+	#bgCanvas { z-index: 1; }
+	#drawCanvas { z-index: 2; }
+	#uiCanvas { z-index: 3; }
+
+		#topbar {
+			background-color: #22721c;
+			color: #ffffff;
+		}
+		.stat {
+			width: 120px;
+			margin: 6px;
+		}
+		.topbarcontents {
+			padding: 5px;
+			display: flex;
+			margin-left: 600px;
+		}
+    </style>
+</head>
+<body>
+
+	<div id="topbar">
+		<div class="topbarcontents">
+		<div class="stat">
+				CORRECT:
+				<span id="correct">0</span>
+		</div>
+		<div class="stat">
+				INCORRECT:
+				<span id="incorrect">0</span>
+		</div>
+		</div>
+	</div>
+
+<canvas id="bgCanvas" width="980" height="1300"></canvas>
+<canvas id="drawCanvas" width="980" height="1300"></canvas>
+<canvas id="uiCanvas" width="980" height="1300"></canvas>
+
+<script>
+	var unitlength = 128;
+	var pixwidth = 980;
+	var pixheight = 1400;
+	var tilewidth = 7;
+	var tileheight = 10;
+	var vpadding = (pixheight - (unitlength * tileheight))/2;
+	var hpadding = (pixwidth - (unitlength * tilewidth))/2;
+
+	function tileToPix(tiley, pcy, tilex, pcx) {
+		var x = hpadding + (unitlength*tilex) + (unitlength * pcx);
+		var y = vpadding + (unitlength*tiley) + (unitlength * pcy);
+		return {x: x, y: y};
+	}
+
+	function pixToTile(x, y) {
+		var tilex = Math.floor((x - hpadding)/unitlength);
+		var tiley = Math.floor((y - vpadding)/unitlength);
+		return {x: tilex, y: tiley};
+	}
+
+	function oppositeDirection(dir) {
+		
+		switch(dir) {
+			case "north":
+				return "south";
+			case "east":
+				return "west";
+			case "south":
+				return "north";
+			case "west":
+				return "east";
+		}
+	}
+
+	function offsetFromDirection(dir) {
+		switch(dir) {
+			case "north":
+				return {x:0.5,y:0};
+			case "east":
+				return {x:1,y:0.5};
+			case "south":
+				return {x:0.5,y:1};
+			case "west":
+				return {x:0,y:0.5};
+		}
+	}
+
+	var colordict = {
+		red: "#ff4838",
+		blue: "#35eeff"
+	};
+
+	function moveTo(context,pos) {
+		context.moveTo(pos.x, pos.y);
+	}
+
+	function lineTo(context,pos) {
+		context.lineTo(pos.x, pos.y);
+	}
+
+	function drawLine(context, pos1, pos2) {		
+		bctx.beginPath();
+		moveTo(bctx,pos1);
+		lineTo(bctx,pos2);
+		bctx.stroke();
+		bctx.closePath();
+	}
+
+	function createArray(rows, cols) {
+		var arr = new Array(rows);
+		for (var i=0;i<rows;i++) {
+			arr[i] = new Array(cols);
+		}
+		return arr;
+	}
+
+	var tiles = createArray(tileheight, tilewidth);
+	tiles[1][1] = {type:"source", out:"south"};
+	tiles[2][1] = {type:"track", in:"north", out:"south"};
+	tiles[3][1] = {type:"node", in:"north", out:["south", "east"], current:0};
+	tiles[4][1] = {type:"track", in:"north", out:"south"};
+	tiles[5][1] = {type:"sink", in:"north", accepts:"red"};
+	tiles[3][2] = {type:"track", in:"west", out:"east"};
+	tiles[3][3] = {type:"sink", in:"west", accepts:"blue"};
+
+	var trains = [];
+
+	var bgcanvas = document.getElementById("bgCanvas");
+	var bctx = bgcanvas.getContext("2d");
+
+	function drawCircle(context, pos, radius, colour) {
+		context.beginPath();
+		context.arc(pos.x, pos.y, radius * unitlength, 0, Math.PI*2, false);
+		context.fillStyle = colour;
+		context.fill();
+		context.closePath();
+	}
+
+	function drawTrack(x, y, indir, out) {
+		var inoffset = offsetFromDirection(indir);
+		var outoffset = offsetFromDirection(out);
+		drawLine(bctx, tileToPix(y,inoffset.y,x,inoffset.x), tileToPix(y,outoffset.y,x,outoffset.x));
+	}
+
+	function drawNode(x, y, obj) {
+		var topleft = tileToPix(y,0,x,0);
+		bctx.clearRect(topleft.x + 1, topleft.y + 1, unitlength - 2, unitlength - 2);
+		var indir = obj.in;
+		var out = obj.out[obj.current];
+		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.45, "#6dff85");
+		drawTrack(x, y, indir, out);
+	}
+
+	function drawBg() {
+		for (var y=0; y<=tileheight; y++) {
+			drawLine(bctx, tileToPix(y,0,0,0), tileToPix(y,0,tilewidth,0));
+		}
+		for (var x=0; x<=tilewidth; x++) {
+			drawLine(bctx, tileToPix(0,0,x,0), tileToPix(tileheight,0,x,0));
+		}
+		for (var y=0; y<tileheight; y++) {
+			for (var x=0; x<tilewidth; x++) {
+				var obj = tiles[y][x];
+				if (obj != undefined) {
+					switch (obj.type) {
+	case "source":
+		drawCircle(bctx, tileToPix(y,0.5,x,0.5),0.3,"gray");
+		var offset = offsetFromDirection(obj.out);
+		drawLine(bctx, tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
+		break;
+	case "track":
+		drawTrack(x, y, obj.in, obj.out);
+		break;
+	case "node":
+		drawNode(x, y, obj);
+		break;
+	case "sink":
+		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.4, colordict[obj.accepts]);
+		var offset = offsetFromDirection(obj.in);
+		drawLine(bctx, tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
+		break;
+					}
+				}
+			}
+		}
+	}
+
+	drawBg();
+
+	var canvas = document.getElementById("drawCanvas");
+	var ctx = canvas.getContext("2d");
+
+	var movementPerFrame = 0.019;
+
+	function nextFromDirection(tilepos, outdir) {
+		switch(outdir) {
+			case "north":
+				var next = {x: tilepos.x, y: tilepos.y-1};
+				break;
+			case "west":
+				var next = {x: tilepos.x-1, y: tilepos.y};
+				break;
+			case "east":
+				var next = {x: tilepos.x+1, y: tilepos.y};
+				break;
+			case "south":
+				var next = {x: tilepos.x, y: tilepos.y+1};
+				break;
+		}
+		return next;
+	}
+
+	function getNewTrainPosition(tilepos) {
+		var tile = tiles[tilepos.y][tilepos.x];
+		var from = offsetFromDirection(tile.in);
+		if (tile.type == "sink") {
+			var to = offsetFromDirection(oppositeDirection(tile.in));
+			var next = {};
+		}
+		else {
+			if (tile.type == "node") {
+				var outdir = tile.out[tile.current];
+			}
+			else {
+				var outdir = tile.out;
+			}
+			var to = offsetFromDirection(outdir);
+			next = nextFromDirection(tilepos, outdir);
+		}
+		return { fromPos: from, toPos: to, thisTile: tilepos, nextTile: next, pc: 0 };
+	}
+
+	function linearCombine(from, to, pc) {
+		var x = (from.x * (1-pc)) + (to.x * pc);
+		var y = (from.y * (1-pc)) + (to.y * pc);
+		return {x: x, y: y};
+	}
+
+	function doFrame() {
+		var trainsToRemove = [];
+		trains.forEach(function(train) {
+			train.position.pc += movementPerFrame;
+			if (train.position.pc >= 1) {
+				train.position = getNewTrainPosition(train.position.nextTile);
+			}
+			else if (tiles[train.position.thisTile.y][train.position.thisTile.x].type == "sink" && train.position.pc >= 0.5) {
+				trainsToRemove.push(trains.indexOf(train));
+			}
+		});
+		trainsToRemove.forEach(function(index) {
+			trains.splice(index, 1);
+		});
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		trains.forEach(function(train) {
+			var tilepoint = linearCombine(train.position.fromPos, train.position.toPos, train.position.pc);
+			var pxpoint = tileToPix(train.position.thisTile.y, tilepoint.y, train.position.thisTile.x,tilepoint.x);
+			drawCircle(ctx, pxpoint, 0.2, "red")
+		});
+	}
+
+	setInterval(doFrame, 33);
+
+	function makeTrain(source, sourceTile) {
+		trains.push({
+			position: { 
+					fromPos: offsetFromDirection(oppositeDirection(sourceTile.out)), 
+					toPos: offsetFromDirection(sourceTile.out), 
+					thisTile: source, 
+					nextTile: nextFromDirection(source, sourceTile.out), 
+					pc: 0.5 }
+		});
+	}
+
+	function first(f, arr) {
+		for (var y = 0; y< arr.length; y++) {
+			var subarr = arr[y];
+			for (var x = 0; x < subarr.length; x++) {
+				if (f(subarr[x])) {
+					return {x: x, y: y};
+				}
+			}
+		}
+	}
+
+	function isSource(tile) {
+		return (tile != undefined && tile.type == "source");
+	}
+
+	var firstsource = first(isSource, tiles);
+	var firstsourceTile = tiles[firstsource.y][firstsource.x];
+
+	function trainGenerate() {
+		makeTrain(firstsource, firstsourceTile);
+	}
+
+	setInterval(trainGenerate, 2500);
+
+	var uicanvas = document.getElementById("uiCanvas");
+	var elemLeft = uicanvas.offsetLeft;
+	var elemTop = uicanvas.offsetTop;
+	function onClick(event) {
+		var tilepos = pixToTile(event.pageX - elemLeft, event.pageY - elemTop)
+		console.log(tilepos);
+		if (tilepos.x >= 0 && tilepos.x < tilewidth && tilepos.y >= 0 && tilepos.y < tileheight) {
+			var obj = tiles[tilepos.y][tilepos.x];
+			if (obj != undefined && obj.type=="node") {
+				obj.current = 1 - obj.current;
+				drawNode(tilepos.x, tilepos.y, obj);
+			}
+		}
+	}
+	uicanvas.addEventListener('click', onClick, false);
+
+</script>
+
+</body>
+</html>
