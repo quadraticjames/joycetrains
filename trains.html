@@ -128,9 +128,51 @@
 	tiles[2][1] = {type:"track", in:"north", out:"south"};
 	tiles[3][1] = {type:"node", in:"north", out:["south", "east"], current:0};
 	tiles[4][1] = {type:"track", in:"north", out:"south"};
-	tiles[5][1] = {type:"sink", in:"north", accepts:"red"};
+	tiles[5][1] = {type:"sink", in:"north", accepts:"a"};
 	tiles[3][2] = {type:"track", in:"west", out:"east"};
-	tiles[3][3] = {type:"sink", in:"west", accepts:"blue"};
+	tiles[3][3] = {type:"sink", in:"west", accepts:"b"};
+
+	function selectMany(arr, f) {
+		var results = [];
+		arr.forEach(function(row) {
+			row.forEach(function(tile) {
+				var x = f(tile);
+				if (x != undefined) {
+					results.push(x);
+				}
+			});
+		});
+		return results;
+	}
+
+	var acceptedTypes = selectMany(tiles, function(tile) {
+		if (tile.type == "sink") {
+			return tile.accepts;
+		}
+		return undefined;
+	});
+
+	var displayTypes = [
+		{
+			colors: ["#b5050e"]
+		},
+		{
+			colors: ["#1605b5"]
+		}
+	]
+
+	var typeDict = {};
+
+	function randomInteger(max) {
+		return Math.floor((Math.random() * max));
+	}
+
+	var unusedDisplayTypes = displayTypes.slice(0);
+	acceptedTypes.forEach(function(type) {
+		var index = randomInteger(unusedDisplayTypes.length);
+		typeDict[type] = unusedDisplayTypes[index];
+		unusedDisplayTypes.splice(index, 1);
+	});
 
 	var trains = [];
 
@@ -184,7 +226,7 @@
 		drawNode(x, y, obj);
 		break;
 	case "sink":
-		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.4, colordict[obj.accepts]);
+		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.4, typeDict[obj.accepts].colors[0]);
 		var offset = offsetFromDirection(obj.in);
 		drawLine(bctx, tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
 		break;
@@ -245,14 +287,27 @@
 		return {x: x, y: y};
 	}
 
+	var correct = 0;
+	var incorrect = 0;
+	var correctspan = document.getElementById("correct");
+	var incorrectspan = document.getElementById("incorrect");
+
 	function doFrame() {
 		var trainsToRemove = [];
 		trains.forEach(function(train) {
 			train.position.pc += movementPerFrame;
+			var tile = tiles[train.position.thisTile.y][train.position.thisTile.x];
 			if (train.position.pc >= 1) {
 				train.position = getNewTrainPosition(train.position.nextTile);
 			}
-			else if (tiles[train.position.thisTile.y][train.position.thisTile.x].type == "sink" && train.position.pc >= 0.5) {
+			else if (tile.type == "sink" && train.position.pc >= 0.5) {
+				if (tile.accepts == train.type) {
+					correct++;
+				} else {
+					incorrect++;
+				}
+				correctspan.innerHTML = correct;
+				incorrectspan.innerHTML = incorrect;
 				trainsToRemove.push(trains.indexOf(train));
 			}
 		});
@@ -263,20 +318,22 @@
 		trains.forEach(function(train) {
 			var tilepoint = linearCombine(train.position.fromPos, train.position.toPos, train.position.pc);
 			var pxpoint = tileToPix(train.position.thisTile.y, tilepoint.y, train.position.thisTile.x,tilepoint.x);
-			drawCircle(ctx, pxpoint, 0.2, "red")
+			drawCircle(ctx, pxpoint, 0.2, typeDict[train.type].colors[0])
 		});
 	}
 
 	setInterval(doFrame, 33);
 
 	function makeTrain(source, sourceTile) {
+		var type = acceptedTypes[randomInteger(acceptedTypes.length)];
 		trains.push({
 			position: { 
 					fromPos: offsetFromDirection(oppositeDirection(sourceTile.out)), 
 					toPos: offsetFromDirection(sourceTile.out), 
 					thisTile: source, 
 					nextTile: nextFromDirection(source, sourceTile.out), 
-					pc: 0.5 }
+					pc: 0.5 },
+			type: type
 		});
 	}
 
