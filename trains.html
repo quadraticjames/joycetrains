@@ -6,7 +6,7 @@
     <style>
 		body {width:980px}
     	* { padding: 0; margin: 0; }
-    	canvas { position:absolute; top:0px; }
+    	canvas { position:absolute; top:40px; }
 	#bgCanvas { z-index: 1; }
 	#drawCanvas { z-index: 2; }
 	#uiCanvas { z-index: 3; }
@@ -14,6 +14,7 @@
 		#topbar {
 			background-color: #22721c;
 			color: #ffffff;
+			height: 40px;
 		}
 		.stat {
 			width: 120px;
@@ -48,7 +49,7 @@
 <script>
 	var unitlength = 128;
 	var pixwidth = 980;
-	var pixheight = 1400;
+	var pixheight = 1300;
 	var tilewidth = 7;
 	var tileheight = 10;
 	var vpadding = (pixheight - (unitlength * tileheight))/2;
