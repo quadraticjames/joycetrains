@@ -54,48 +54,59 @@
 	*/
 	var backgroundColor = "#004d00";
 	var nodeColor = "#00b300";
+
+	var pallette = {
+		blue: "#3737f2",
+		red: "#d30000",
+		black: "#000000",
+		white: "#ffffff",
+		yellow: "#f7ef13",
+		pink: "#e31af2",
+		teal: "#37f2c6"
+	}
+
 	var displayTypes = [
 		{
-			colors: ["#b5050e"]
+			colors: [pallette.blue]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.red]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.black]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.white]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.yellow]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.pink]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.teal]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.teal, pallette.black]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.yellow, pallette.black]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.white, pallette.pink]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.white, pallette.blue]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.red, pallette.yellow]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.pink, pallette.teal]
 		},
 		{
-			colors: ["#1605b5"]
+			colors: [pallette.red, pallette.blue]
 		}
 	]
 
@@ -432,7 +443,12 @@
 		drawNodeTrack(x, y, obj);
 		break;
 	case "sink":
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.42, "#000000");
 		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.4, typeDict[obj.accepts].colors[0]);
+		if (typeDict[obj.accepts].colors.length > 1) {
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.26, "#000000");
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.25, typeDict[obj.accepts].colors[1]);
+		}
 		var offset = offsetFromDirection(obj.in);
 		drawTrackLine(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
 		break;
@@ -500,7 +516,12 @@
 		trains.forEach(function(train) {
 			var tilepoint = linearCombine(train.position.fromPos, train.position.toPos, train.position.pc);
 			var pxpoint = tileToPix(train.position.thisTile.y, tilepoint.y, train.position.thisTile.x,tilepoint.x);
-			drawCircle(contexts[trainCanvas], pxpoint, 0.2, typeDict[train.type].colors[0])
+			drawCircle(contexts[trainCanvas], pxpoint, 0.22, "#000000");
+			drawCircle(contexts[trainCanvas], pxpoint, 0.2, typeDict[train.type].colors[0]);
+			if (typeDict[train.type].colors.length > 1) {
+				drawCircle(contexts[trainCanvas], pxpoint, 0.12, "#000000");
+				drawCircle(contexts[trainCanvas], pxpoint, 0.1, typeDict[train.type].colors[1]);
+			}
 		});
 	}
 
