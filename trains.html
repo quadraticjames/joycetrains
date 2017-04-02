@@ -8,8 +8,9 @@
     	* { padding: 0; margin: 0; -webkit-tap-highlight-color:rgba(0,0,0,0); }
     	canvas { position:absolute; top:40px; }
 	#bgCanvas { z-index: 1; }
-	#drawCanvas { z-index: 2; }
-	#uiCanvas { z-index: 3; }
+	#difficultSecondCanvas {z-index: 2;}
+	#drawCanvas { z-index: 3; }
+	#uiCanvas { z-index: 4; }
 
 		#topbar {
 			background-color: #22721c;
@@ -42,18 +43,148 @@
 		</div>
 	</div>
 
-<canvas id="bgCanvas" width="980" height="1300"></canvas>
-<canvas id="drawCanvas" width="980" height="1300"></canvas>
-<canvas id="uiCanvas" width="980" height="1300"></canvas>
+<canvas id="bgCanvas" width="980" height="1400"></canvas>
+<canvas id="difficultSecondCanvas" width="980" height="1400"></canvas>
+<canvas id="drawCanvas" width="980" height="1400"></canvas>
+<canvas id="uiCanvas" width="980" height="1400"></canvas>
 
 <script>
-	var unitlength = 128;
+	/*
+	VARIABLES
+	*/
+	var backgroundColor = "#004d00";
+	var nodeColor = "#00b300";
+	var displayTypes = [
+		{
+			colors: ["#b5050e"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		},
+		{
+			colors: ["#1605b5"]
+		}
+	]
+
+	var unitlength = 170;
 	var pixwidth = 980;
-	var pixheight = 1300;
-	var tilewidth = 7;
-	var tileheight = 10;
+	var pixheight = 1400;
+	var tilewidth = 5;
+	var tileheight = 8;
 	var vpadding = (pixheight - (unitlength * tileheight))/2;
 	var hpadding = (pixwidth - (unitlength * tilewidth))/2;
+
+	var movementPerFrame = 0.019;
+
+	var tiles = createArray(tileheight, tilewidth);
+	tiles[1][1] = {type:"source", out:"south"};
+	tiles[2][1] = {type:"track", in:"north", out:"south"};
+	tiles[3][1] = {type:"node", in:"north", out:["south", "east"], current:0};
+	tiles[4][1] = {type:"track", in:"north", out:"south"};
+	tiles[5][1] = {type:"sink", in:"north", accepts:"a"};
+	tiles[3][2] = {type:"track", in:"west", out:"east"};
+	tiles[3][3] = {type:"sink", in:"west", accepts:"b"};
+
+	/*
+	Extension methods
+	*/
+	function createArray(rows, cols) {
+		var arr = new Array(rows);
+		for (var i=0;i<rows;i++) {
+			arr[i] = new Array(cols);
+		}
+		return arr;
+	}
+
+	function select(arr, f) {
+		var results = [];
+		arr.forEach(function(element) {
+			results.push(f(element));
+		});
+		return results;
+	}
+
+	function selectMany(arr, f) {
+		var results = [];
+		arr.forEach(function(row) {
+			row.forEach(function(tile) {
+				var x = f(tile);
+				if (x != undefined) {
+					results.push(x);
+				}
+			});
+		});
+		return results;
+	}
+
+	function randomInteger(max) {
+		return Math.floor((Math.random() * max));
+	}
+
+	function randomlyAssignKeysToValues(keys, values) {
+		var result = {};
+		var unusedValues = values.slice(0);
+		keys.forEach(function(key) {
+			var index = randomInteger(unusedValues.length);
+			result[key] = unusedValues[index];
+			unusedValues.splice(index, 1);
+		});
+		return result;
+	}	
+
+	function linearCombine(from, to, pc) {
+		var x = (from.x * (1-pc)) + (to.x * pc);
+		var y = (from.y * (1-pc)) + (to.y * pc);
+		return {x: x, y: y};
+	}
+
+	function first(f, arr) {
+		for (var y = 0; y< arr.length; y++) {
+			var subarr = arr[y];
+			for (var x = 0; x < subarr.length; x++) {
+				if (f(subarr[x])) {
+					return {x: x, y: y};
+				}
+			}
+		}
+	}
+
+	/*
+	Drawing-specific functions
+	*/
 
 	function tileToPix(tiley, pcy, tilex, pcx) {
 		var x = hpadding + (unitlength*tilex) + (unitlength * pcx);
@@ -65,10 +196,47 @@
 		var tilex = Math.floor((x - hpadding)/unitlength);
 		var tiley = Math.floor((y - vpadding)/unitlength);
 		return {x: tilex, y: tiley};
+	}	
+
+	function moveTo(context,pos) {
+		context.moveTo(pos.x, pos.y);
 	}
 
-	function oppositeDirection(dir) {
-		
+	function lineTo(context,pos) {
+		context.lineTo(pos.x, pos.y);
+	}
+
+	function drawLine(context, pos1, pos2, thickness, color) {		
+		context.beginPath();
+		context.lineWidth = thickness;
+		moveTo(context,pos1);
+		lineTo(context,pos2);
+		context.strokeStyle = color;
+		context.stroke();
+		context.closePath();
+	}
+
+	function drawCircle(context, pos, radius, colour) {
+		context.beginPath();
+		context.arc(pos.x, pos.y, radius * unitlength, 0, Math.PI*2, false);
+		context.fillStyle = colour;
+		context.fill();
+		context.closePath();
+	}
+
+	function drawRect(context, pos1, pos2, colour) {
+		context.beginPath();
+		context.rect(pos1.x, pos1.y, pos2.x - pos1.x, pos2.y - pos1.y);
+		context.fillStyle = colour;
+		context.fill();
+		context.closePath();
+	}
+	
+	/*
+	DIRECTION
+	*/
+
+	function oppositeDirection(dir) {		
 		switch(dir) {
 			case "north":
 				return "south";
@@ -94,155 +262,6 @@
 		}
 	}
 
-	var colordict = {
-		red: "#ff4838",
-		blue: "#35eeff"
-	};
-
-	function moveTo(context,pos) {
-		context.moveTo(pos.x, pos.y);
-	}
-
-	function lineTo(context,pos) {
-		context.lineTo(pos.x, pos.y);
-	}
-
-	function drawLine(context, pos1, pos2) {		
-		bctx.beginPath();
-		moveTo(bctx,pos1);
-		lineTo(bctx,pos2);
-		bctx.stroke();
-		bctx.closePath();
-	}
-
-	function createArray(rows, cols) {
-		var arr = new Array(rows);
-		for (var i=0;i<rows;i++) {
-			arr[i] = new Array(cols);
-		}
-		return arr;
-	}
-
-	var tiles = createArray(tileheight, tilewidth);
-	tiles[1][1] = {type:"source", out:"south"};
-	tiles[2][1] = {type:"track", in:"north", out:"south"};
-	tiles[3][1] = {type:"node", in:"north", out:["south", "east"], current:0};
-	tiles[4][1] = {type:"track", in:"north", out:"south"};
-	tiles[5][1] = {type:"sink", in:"north", accepts:"a"};
-	tiles[3][2] = {type:"track", in:"west", out:"east"};
-	tiles[3][3] = {type:"sink", in:"west", accepts:"b"};
-
-	function selectMany(arr, f) {
-		var results = [];
-		arr.forEach(function(row) {
-			row.forEach(function(tile) {
-				var x = f(tile);
-				if (x != undefined) {
-					results.push(x);
-				}
-			});
-		});
-		return results;
-	}
-
-	var acceptedTypes = selectMany(tiles, function(tile) {
-		if (tile.type == "sink") {
-			return tile.accepts;
-		}
-		return undefined;
-	});
-
-	var displayTypes = [
-		{
-			colors: ["#b5050e"]
-		},
-		{
-			colors: ["#1605b5"]
-		}
-	]
-
-	var typeDict = {};
-
-	function randomInteger(max) {
-		return Math.floor((Math.random() * max));
-	}
-
-	var unusedDisplayTypes = displayTypes.slice(0);
-	acceptedTypes.forEach(function(type) {
-		var index = randomInteger(unusedDisplayTypes.length);
-		typeDict[type] = unusedDisplayTypes[index];
-		unusedDisplayTypes.splice(index, 1);
-	});
-
-	var trains = [];
-
-	var bgcanvas = document.getElementById("bgCanvas");
-	var bctx = bgcanvas.getContext("2d");
-
-	function drawCircle(context, pos, radius, colour) {
-		context.beginPath();
-		context.arc(pos.x, pos.y, radius * unitlength, 0, Math.PI*2, false);
-		context.fillStyle = colour;
-		context.fill();
-		context.closePath();
-	}
-
-	function drawTrack(x, y, indir, out) {
-		var inoffset = offsetFromDirection(indir);
-		var outoffset = offsetFromDirection(out);
-		drawLine(bctx, tileToPix(y,inoffset.y,x,inoffset.x), tileToPix(y,outoffset.y,x,outoffset.x));
-	}
-
-	function drawNode(x, y, obj) {
-		var topleft = tileToPix(y,0,x,0);
-		bctx.clearRect(topleft.x + 1, topleft.y + 1, unitlength - 2, unitlength - 2);
-		var indir = obj.in;
-		var out = obj.out[obj.current];
-		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.45, "#6dff85");
-		drawTrack(x, y, indir, out);
-	}
-
-	function drawBg() {
-		for (var y=0; y<=tileheight; y++) {
-			drawLine(bctx, tileToPix(y,0,0,0), tileToPix(y,0,tilewidth,0));
-		}
-		for (var x=0; x<=tilewidth; x++) {
-			drawLine(bctx, tileToPix(0,0,x,0), tileToPix(tileheight,0,x,0));
-		}
-		for (var y=0; y<tileheight; y++) {
-			for (var x=0; x<tilewidth; x++) {
-				var obj = tiles[y][x];
-				if (obj != undefined) {
-					switch (obj.type) {
-	case "source":
-		drawCircle(bctx, tileToPix(y,0.5,x,0.5),0.3,"gray");
-		var offset = offsetFromDirection(obj.out);
-		drawLine(bctx, tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
-		break;
-	case "track":
-		drawTrack(x, y, obj.in, obj.out);
-		break;
-	case "node":
-		drawNode(x, y, obj);
-		break;
-	case "sink":
-		drawCircle(bctx, tileToPix(y,0.5,x,0.5), 0.4, typeDict[obj.accepts].colors[0]);
-		var offset = offsetFromDirection(obj.in);
-		drawLine(bctx, tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
-		break;
-					}
-				}
-			}
-		}
-	}
-
-	drawBg();
-
-	var canvas = document.getElementById("drawCanvas");
-	var ctx = canvas.getContext("2d");
-
-	var movementPerFrame = 0.019;
-
 	function nextFromDirection(tilepos, outdir) {
 		switch(outdir) {
 			case "north":
@@ -260,6 +279,100 @@
 		}
 		return next;
 	}
+
+	/*
+	TILE DRAWING
+	*/
+
+	function drawTrackLine(context, pos1, pos2) {
+		drawLine(context, pos1, pos2, 7, "black");
+		drawLine(context, pos1, pos2, 3, "white");
+	}
+
+	function drawTrack(x, y, indir, out, context) {
+		var inoffset = offsetFromDirection(indir);
+		var outoffset = offsetFromDirection(out);
+		var pos1 = tileToPix(y,inoffset.y,x,inoffset.x);
+		var pos2 = tileToPix(y,outoffset.y,x,outoffset.x);
+		drawTrackLine(context, pos1, pos2);
+	}
+
+	function drawNodeTrack(x, y, obj) {
+		var topleft = tileToPix(y,0,x,0);
+		contexts[movingBgCanvas].clearRect(topleft.x + 1, topleft.y + 1, unitlength - 2, unitlength - 2);
+		var indir = obj.in;
+		var out = obj.out[obj.current];
+		drawTrack(x, y, indir, out, contexts[movingBgCanvas]);
+	}
+
+	/*
+	SETUP
+	*/
+
+	var acceptedTypes = selectMany(tiles, function(tile) {
+		if (tile.type == "sink") {
+			return tile.accepts;
+		}
+		return undefined;
+	});
+
+	var typeDict = randomlyAssignKeysToValues(acceptedTypes, displayTypes);
+
+	var canvases = select(["bgCanvas", "difficultSecondCanvas", "drawCanvas", "uiCanvas"], function(c) {
+		return document.getElementById(c);
+	});
+	var contexts = select(canvases, function(c) {
+		return c.getContext("2d");
+	});
+	var backgroundCanvas = 0;
+	var movingBgCanvas = 1;
+	var trainCanvas = 2;
+	var uiCanvas = 3;
+
+	function drawBg() {
+		drawRect(contexts[backgroundCanvas],{x:0,y:0},{x:pixwidth, y:pixheight},backgroundColor);
+		for (var y=0; y<tileheight; y++) {
+			for (var x=0; x<tilewidth; x++) {
+				var obj = tiles[y][x];
+				if (obj != undefined) {
+					switch (obj.type) {
+	case "source":
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5),0.3,"gray");
+		var offset = offsetFromDirection(obj.out);
+		drawTrackLine(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
+		break;
+	case "track":
+		drawTrack(x, y, obj.in, obj.out, contexts[backgroundCanvas]);
+		break;
+	case "node":
+		obj.out.forEach(function(o) {
+			var offset = offsetFromDirection(o);
+			drawTrackLine(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), tileToPix(y, offset.y, x, offset.x));
+		});
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.39, nodeColor);
+		drawNodeTrack(x, y, obj);
+		break;
+	case "sink":
+		drawCircle(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), 0.4, typeDict[obj.accepts].colors[0]);
+		var offset = offsetFromDirection(obj.in);
+		drawTrackLine(contexts[backgroundCanvas], tileToPix(y,0.5,x,0.5), tileToPix(y,offset.y,x,offset.x));
+		break;
+					}
+				}
+			}
+		}
+	}
+
+	drawBg();
+
+	/*
+	Runtime variables
+	*/
+	var trains = [];
+	var correct = 0;
+	var incorrect = 0;
+	var correctspan = document.getElementById("correct");
+	var incorrectspan = document.getElementById("incorrect");
 
 	function getNewTrainPosition(tilepos) {
 		var tile = tiles[tilepos.y][tilepos.x];
@@ -281,16 +394,6 @@
 		return { fromPos: from, toPos: to, thisTile: tilepos, nextTile: next, pc: 0 };
 	}
 
-	function linearCombine(from, to, pc) {
-		var x = (from.x * (1-pc)) + (to.x * pc);
-		var y = (from.y * (1-pc)) + (to.y * pc);
-		return {x: x, y: y};
-	}
-
-	var correct = 0;
-	var incorrect = 0;
-	var correctspan = document.getElementById("correct");
-	var incorrectspan = document.getElementById("incorrect");
 
 	function doFrame() {
 		var trainsToRemove = [];
@@ -314,11 +417,11 @@
 		trainsToRemove.forEach(function(index) {
 			trains.splice(index, 1);
 		});
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		contexts[trainCanvas].clearRect(0, 0, canvases[trainCanvas].width, canvases[trainCanvas].height);
 		trains.forEach(function(train) {
 			var tilepoint = linearCombine(train.position.fromPos, train.position.toPos, train.position.pc);
 			var pxpoint = tileToPix(train.position.thisTile.y, tilepoint.y, train.position.thisTile.x,tilepoint.x);
-			drawCircle(ctx, pxpoint, 0.2, typeDict[train.type].colors[0])
+			drawCircle(contexts[trainCanvas], pxpoint, 0.2, typeDict[train.type].colors[0])
 		});
 	}
 
@@ -337,22 +440,9 @@
 		});
 	}
 
-	function first(f, arr) {
-		for (var y = 0; y< arr.length; y++) {
-			var subarr = arr[y];
-			for (var x = 0; x < subarr.length; x++) {
-				if (f(subarr[x])) {
-					return {x: x, y: y};
-				}
-			}
-		}
-	}
-
-	function isSource(tile) {
+	var firstsource = first(function (tile) {
 		return (tile != undefined && tile.type == "source");
-	}
-
-	var firstsource = first(isSource, tiles);
+	}, tiles);
 	var firstsourceTile = tiles[firstsource.y][firstsource.x];
 
 	function trainGenerate() {
@@ -371,7 +461,7 @@
 			var obj = tiles[tilepos.y][tilepos.x];
 			if (obj != undefined && obj.type=="node") {
 				obj.current = 1 - obj.current;
-				drawNode(tilepos.x, tilepos.y, obj);
+				drawNodeTrack(tilepos.x, tilepos.y, obj);
 			}
 		}
 	}
