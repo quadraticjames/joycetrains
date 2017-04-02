@@ -241,6 +241,15 @@
 		context.closePath();
 	}
 
+	function drawArc(context, arc, thickness, color) {
+		context.beginPath();
+		context.lineWidth = thickness;
+		context.strokeStyle = color;
+		context.arc(arc.x, arc.y, arc.radius, arc.angleFrom, arc.angleTo, false);
+		context.stroke();
+		context.closePath();
+	}
+
 	function drawCircle(context, pos, radius, colour) {
 		context.beginPath();
 		context.arc(pos.x, pos.y, radius * unitlength, 0, Math.PI*2, false);
@@ -309,17 +318,62 @@
 	TILE DRAWING
 	*/
 
+	function calculateArc(tilex, tiley, indir, outdir) {
+		var radius = 0.5 * unitlength;
+		var tosouth = 0;
+		var towest = 0.5 * Math.PI;
+		var tonorth = Math.PI;
+		var toeast = 1.5 * Math.PI;
+		switch(indir + outdir) {
+			case "northwest":
+			case "westnorth":
+				var corner = tileToPix(tiley,0,tilex,0);
+				var angleFrom = tosouth;
+				var angleTo = towest;
+			break;
+			case "northeast":
+			case "eastnorth":
+				var corner = tileToPix(tiley,0,tilex,1);
+				var angleFrom = towest;
+				var angleTo = tonorth;
+			break;
+			case "southwest":
+			case "westsouth":
+				var corner = tileToPix(tiley,1,tilex,0);
+				var angleFrom = toeast;
+				var angleTo = tosouth;
+			break;
+			case "southeast":
+			case "eastsouth":
+				var corner = tileToPix(tiley,1,tilex,1);
+				var angleFrom = tonorth;
+				var angleTo = toeast;
+			break;
+		}
+		return {x: corner.x, y: corner.y, radius: radius, angleFrom: angleFrom, angleTo: angleTo};
+	}
+
 	function drawTrackLine(context, pos1, pos2) {
 		drawLine(context, pos1, pos2, 7, "black");
 		drawLine(context, pos1, pos2, 3, "white");
 	}
 
+	function drawTrackArc(context, arc) {
+		drawArc(context, arc, 7, "black");
+		drawArc(context, arc, 3, "white");
+	}
+
 	function drawTrack(x, y, indir, out, context) {
-		var inoffset = offsetFromDirection(indir);
-		var outoffset = offsetFromDirection(out);
-		var pos1 = tileToPix(y,inoffset.y,x,inoffset.x);
-		var pos2 = tileToPix(y,outoffset.y,x,outoffset.x);
-		drawTrackLine(context, pos1, pos2);
+		if (oppositeDirection(indir) == out) {
+			var inoffset = offsetFromDirection(indir);
+			var outoffset = offsetFromDirection(out);
+			var pos1 = tileToPix(y,inoffset.y,x,inoffset.x);
+			var pos2 = tileToPix(y,outoffset.y,x,outoffset.x);
+			drawTrackLine(context, pos1, pos2);
+		} else {
+			var arc = calculateArc(x, y, indir, out);
+			drawTrackArc(context, arc);
+		}
 	}
 
 	function drawNodeTrack(x, y, obj) {
