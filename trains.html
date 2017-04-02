@@ -555,6 +555,7 @@
 	var elemLeft = uicanvas.offsetLeft;
 	var elemTop = uicanvas.offsetTop;
 	function onClick(event) {
+		event.preventDefault();
 		var tilepos = pixToTile(event.pageX - elemLeft, event.pageY - elemTop)
 		console.log(tilepos);
 		if (tilepos.x >= 0 && tilepos.x < tilewidth && tilepos.y >= 0 && tilepos.y < tileheight) {
@@ -564,6 +565,7 @@
 				drawNodeTrack(tilepos.x, tilepos.y, obj);
 			}
 		}
+		return false;
 	}
 	uicanvas.addEventListener('click', onClick, false);
 
