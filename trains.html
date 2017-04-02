@@ -154,6 +154,50 @@
 	tiles[2][3] = {type:"node", in:"south", out:["north", "east"], current:0};
 	tiles[1][3] = {type:"node", in:"south", out:["north", "east"], current:0};
 
+	var tileset = [];
+	tileset.push(tiles);
+	tiles = createArray(tileheight, tilewidth);
+	tiles[0][0] = {type:"track", in:"south", out:"east"};
+	tiles[0][1] = {type:"node", in:"west", out:["east", "south"], current:0};
+	tiles[0][2] = {type:"track", in:"west", out:"east"};
+	tiles[0][3] = {type:"track", in:"west", out:"east"};
+	tiles[0][4] = {type:"track", in:"west", out:"south"};
+	tiles[1][0] = {type:"track", in:"south", out:"north"};
+	tiles[1][1] = {type:"sink", in:"north", accepts:"a"};
+	tiles[1][2] = {type:"sink", in:"south", accepts:"b"};
+	tiles[1][3] = {type:"sink", in:"south", accepts:"c"};
+	tiles[1][4] = {type:"track", in:"north", out:"south"};
+	tiles[2][0] = {type:"track", in:"south", out:"north"};
+	tiles[2][1] = {type:"sink", in:"east", accepts:"d"};
+	tiles[2][2] = {type:"node", in:"east", out:["west", "north"], current:0};
+	tiles[2][3] = {type:"node", in:"south", out:["west", "north"], current:0};
+	tiles[2][4] = {type:"track", in:"north", out:"south"};
+	tiles[3][0] = {type:"node", in:"south", out:["north", "east"], current:0};
+	tiles[3][1] = {type:"sink", in:"west", accepts:"e"};
+	tiles[3][2] = {type:"sink", in:"south", accepts:"f"};
+	tiles[3][3] = {type:"track", in:"east", out:"north"};
+	tiles[3][4] = {type:"node", in:"north", out:["south", "west"], current:0};
+	tiles[4][0] = {type:"node", in:"south", out:["north", "east"], current:0};
+	tiles[4][1] = {type:"node", in:"west", out:["east", "south"], current:0};
+	tiles[4][2] = {type:"node", in:"west", out:["north", "east"], current:0};
+	tiles[4][3] = {type:"sink", in:"west", accepts:"g"};
+	tiles[4][4] = {type:"track", in:"north", out:"south"};
+	tiles[5][0] = {type:"track", in:"south", out:"north"};
+	tiles[5][1] = {type:"sink", in:"north", accepts:"h"};
+	tiles[5][2] = {type:"track", in:"east", out:"south"};
+	tiles[5][3] = {type:"track", in:"east", out:"west"};
+	tiles[5][4] = {type:"node", in:"north", out:["south", "west"], current:0};
+	tiles[6][0] = {type:"track", in:"south", out:"north"};
+	tiles[6][1] = {type:"sink", in:"east", accepts:"i"};
+	tiles[6][2] = {type:"node", in:"north", out:["east", "west"], current:0};
+	tiles[6][3] = {type:"sink", in:"west", accepts:"j"};
+	tiles[6][4] = {type:"track", in:"north", out:"south"};
+	tiles[7][0] = {type:"track", in:"east", out:"north"};
+	tiles[7][1] = {type:"source", out:"west"};
+	tiles[7][2] = {type:"sink", in:"east", accepts:"k"};
+	tiles[7][3] = {type:"track", in:"east", out:"west"};
+	tiles[7][4] = {type:"track", in:"north", out:"west"};
+
 	/*
 	Extension methods
 	*/
