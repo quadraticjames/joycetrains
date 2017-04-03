@@ -609,7 +609,14 @@
 				drawNodeTrack(tilepos.x, tilepos.y, obj);
 			}
 		}
+		incorrect += 100;
+		incorrectspan.innerHTML = incorrect;
 		return false;
+	}
+	function onTouchStart(event) {
+		onClick(event);
+		correct += 100;
+		correctspan.innerHTML = correct;
 	}
 	uicanvas.addEventListener('click', onClick, false);
 	uicanvas.addEventListener('touchstart', onClick, false);
