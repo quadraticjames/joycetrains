@@ -589,11 +589,21 @@
 	}, tiles);
 	var firstsourceTile = tiles[firstsource.y][firstsource.x];
 
+	var maxTimeBetweenTrains = 8000;
+	var minTimeBetweenTrains = 3500;
+	var maxReduceDelta = 55;
+
 	function trainGenerate() {
 		makeTrain(firstsource, firstsourceTile);
+		var interval = randomInteger(maxTimeBetweenTrains-minTimeBetweenTrains) + minTimeBetweenTrains;
+		setTimeout(trainGenerate, interval);
+		var nextmax = maxTimeBetweenTrains - maxReduceDelta;
+		if (nextmax > minTimeBetweenTrains) {
+			maxTimeBetweenTrains = nextmax;
+		}
 	}
 
-	setInterval(trainGenerate, 4500);
+	trainGenerate();
 
 	var uicanvas = document.getElementById("uiCanvas");
 	var elemLeft = uicanvas.offsetLeft;
